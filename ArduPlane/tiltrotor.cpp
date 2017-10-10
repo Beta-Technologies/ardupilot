@@ -111,20 +111,32 @@ void QuadPlane::tiltrotor_continuous_update(void)
       3) if we are in TRANSITION_TIMER mode then we are transitioning
          to forward flight and should put the rotors all the way forward
 
-         Anna - this is nice! We can just replace this -- possibly conditionally --
-         with some function that reads a momentary switch and computes the tilt
-         value, eg:
-
-         if (frame_type == QUAD_H && tilt.tilt_mask == 15) {
-			 float settilt = constrain_float(get_reqd_tilt_posn());
-			 tiltrotor_slew(settilt * tilt.max_angle_deg / 90.0f);
-         }
-
     */
     if (plane.control_mode == QSTABILIZE ||
         plane.control_mode == QHOVER) {
         tiltrotor_slew(0);
         return;
+    }
+
+    // Anna - we'd like to write code specific to our airframe(s) that will use our
+    // set_tilt_position function during manually requested transition, rather than
+    // relying on flight mode or throttle state.
+
+    //AP_Int8 frame_class = 1 (quad) or 4 (octaquad)
+    //AP_Int8 frame_type = 3 (H frame)
+    // tilt_mask = 15 (all 4) or 255 (all 8)
+
+    if (QuadPlane::frame_class == 1 && QuadPlane::frame_type == 3 && tilt.tilt_mask == 15) {
+    		set_tilt_position();
+    		// maybe set flight mode here?
+    		if (tilt.current_tilt >= tilt.max_angle_deg) { // use Q_TILT_MAX to cutoff differential thrust control
+    			// flight mode == FWBA
+    			plane.set_mode(FLY_BY_WIRE_A, MODE_REASON_UNKNOWN);
+    		} else {
+    			// flight mode == QSTABILIZE
+    			plane.set_mode(QSTABILIZE, MODE_REASON_UNKNOWN);
+    		}
+    		return;
     }
 
     if (assisted_flight &&
@@ -133,7 +145,7 @@ void QuadPlane::tiltrotor_continuous_update(void)
         // we are transitioning to fixed wing - tilt the motors all
         // the way forward
 
-    		/* so do this if we are in transition_angle_wait or transition_done
+    		/* Anna - so do this if we are in transition_angle_wait or transition_done:
         enum {
             TRANSITION_AIRSPEED_WAIT,
             TRANSITION_TIMER,
@@ -151,7 +163,7 @@ void QuadPlane::tiltrotor_continuous_update(void)
         // Q_TILT_MAX. Below 50% throttle we decrease linearly. This
         // relies heavily on Q_VFWD_GAIN being set appropriately.
 
-    		/* From the docs:
+    		/* Anna - from the docs:
     		 *
     		 * The Q_TILT_MAX parameter controls the tilt angle during transitions
     		 * for continuous tilt vehicles. It is the angle in degrees that the rotors
