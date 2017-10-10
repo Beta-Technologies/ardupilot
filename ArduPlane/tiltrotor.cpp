@@ -55,9 +55,49 @@ void QuadPlane::tiltrotor_slew(float newtilt)
  */
 void QuadPlane::tiltrotor_continuous_update(void)
 {
+
+    // Anna - here is code specific to our airframe(s) that will use our
+    // set_tilt_position function during manually requested transition, rather than
+    // relying on flight mode or throttle state.
+    //AP_Int8 frame_class = 1 (quad) or 4 (octaquad)
+    //AP_Int8 frame_type = 3 (H frame)
+    // tilt_mask = 15 (all 4) or 255 (all 8)
+    if (QuadPlane::frame_class == 1 && QuadPlane::frame_type == 3 && tilt.tilt_mask == 15) {
+
+    		// Set tilt position based on transition switch command (default is rc channel 5)
+    		set_tilt_position();
+
+    		// Set flight mode based on tilt angle - use Q_TILT_MAX to cutoff differential thrust control?
+    		if (tilt.current_tilt >= tilt.max_angle_deg/90.0f) {
+    			// motors closer to horizontal: flight mode == FWBA
+    			plane.set_mode(FLY_BY_WIRE_A, MODE_REASON_UNKNOWN);
+    		} else {
+    			// motors closer to vertical: flight mode == QSTABILIZE
+    			plane.set_mode(QSTABILIZE, MODE_REASON_UNKNOWN);
+    		}
+
+        if (!hal.util->get_soft_armed()) {
+            tilt.current_throttle = 0;
+        } else {
+    			// original function has some slew limiting on throttle in vertical flight modes--why?
+        		tilt.current_throttle = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle)*0.01, 0, 1);
+        }
+
+        	if (tilt.current_tilt >= 1) { //do this at smaller angle? What is controlling throttle during transition?
+
+            // the motors are all the way forward, start using them for fwd thrust
+            uint8_t mask = is_zero(tilt.current_throttle)?0:(uint8_t)tilt.tilt_mask.get();
+            motors->output_motor_mask(tilt.current_throttle, mask);
+
+            // prevent motor shutdown
+            tilt.motors_active = true;
+        }
+
+    		return;
+    }
+
     // default to inactive
     tilt.motors_active = false;
-    // Anna - probably comment this out
 
     // the maximum rate of throttle change
     float max_change;
@@ -95,7 +135,7 @@ void QuadPlane::tiltrotor_continuous_update(void)
     tilt.current_throttle = constrain_float(motors_throttle,
                                             tilt.current_throttle-max_change,
                                             tilt.current_throttle+max_change);
-    
+
     /*
       we are in a VTOL mode. We need to work out how much tilt is
       needed. There are 3 strategies we will use:
@@ -116,27 +156,6 @@ void QuadPlane::tiltrotor_continuous_update(void)
         plane.control_mode == QHOVER) {
         tiltrotor_slew(0);
         return;
-    }
-
-    // Anna - we'd like to write code specific to our airframe(s) that will use our
-    // set_tilt_position function during manually requested transition, rather than
-    // relying on flight mode or throttle state.
-
-    //AP_Int8 frame_class = 1 (quad) or 4 (octaquad)
-    //AP_Int8 frame_type = 3 (H frame)
-    // tilt_mask = 15 (all 4) or 255 (all 8)
-
-    if (QuadPlane::frame_class == 1 && QuadPlane::frame_type == 3 && tilt.tilt_mask == 15) {
-    		set_tilt_position();
-    		// maybe set flight mode here?
-    		if (tilt.current_tilt >= tilt.max_angle_deg) { // use Q_TILT_MAX to cutoff differential thrust control
-    			// flight mode == FWBA
-    			plane.set_mode(FLY_BY_WIRE_A, MODE_REASON_UNKNOWN);
-    		} else {
-    			// flight mode == QSTABILIZE
-    			plane.set_mode(QSTABILIZE, MODE_REASON_UNKNOWN);
-    		}
-    		return;
     }
 
     if (assisted_flight &&
@@ -226,7 +245,8 @@ void QuadPlane::tiltrotor_binary_update(void)
   update motor tilt
 
   Anna - might want to put  a 4th possibility in here so that we don't
-  have to mangle tiltrotor_continuous_update too badly
+  have to mangle tiltrotor_continuous_update too badly. THis is called in
+  quadplane.cpp - quadplane_update(), line 1409
  */
 void QuadPlane::tiltrotor_update(void)
 {
@@ -433,34 +453,33 @@ void QuadPlane::set_tilt_position(void)
 	float degs_per_msec = 20.0f / 1000.0f; // hardcode this? Make a param? I have no idea
 	float delta_angle = 0.0f;
 
-	if (tilt.current_tilt <= 0.0f || tilt.current_tilt >= 1.0f) {
+	// Not sure using millis() is a great idea here...
+	//delta_angle = (float)(millis() - tilt.last_transition_time) * (degs_per_msec / 90.0f);
 
-		// we are starting a new transition - move a little bit to satisfy condition next loop
-		delta_angle = 0.01f;
+	delta_angle = 0.001f; // hardcode for debugging
 
+	if (hal.rcin->read(plane.g.tilt_channel-1) > 1749)
+	{
+		// we are requesting a forward tilt, increment tilt position
+		tilt.current_tilt += delta_angle;
+	}
+	else if (hal.rcin->read(plane.g.tilt_channel-1) < 1230)
+	{
+		// we are requesting a backward tilt, decrement tilt position
+		tilt.current_tilt -= delta_angle;
 	} else {
-
-		// We have begun to transition - move at desired rate
-		// Not sure using millis() is a great idea here...
-		delta_angle = (float)(millis() - tilt.last_transition_time) * (degs_per_msec / 90.0f);
-
-		if (hal.rcin->read(plane.g.tilt_channel-1) > 1749)
-			// I've copied the "-1" from code requesting the flight mode channel
-			// eg line 103, control_modes.cpp--we might not need it for this
-		{
-			// we are requesting a forward tilt, increment tilt position
-			tilt.current_tilt += delta_angle;
-		}
-		else if (hal.rcin->read(plane.g.tilt_channel-1) < 1230)
-		{
-			// we are requesting a backward tilt, decrement tilt position
-			tilt.current_tilt -= delta_angle;
-		}
+		// Hold current position
 	}
 
 	// constrain tilt
-	tilt.current_tilt = constrain_float(tilt.current_tilt,0.0f,1.0f);
+	tilt.current_tilt = constrain_float(tilt.current_tilt,0,1);
+
+    // translate to 0..1000 range and output PWM to tilt channel -  see libraries/SRV_channel/SRV_Channel_aux.cpp
+    SRV_Channels::set_output_scaled(SRV_Channel::k_motor_tilt, 1000 * tilt.current_tilt);
+
+    // setup tilt compensation
+    motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&QuadPlane::tilt_compensate, void, float *, uint8_t));
 
 	// update timer
-	tilt.last_transition_time = millis();
+	//tilt.last_transition_time = millis();
 }
