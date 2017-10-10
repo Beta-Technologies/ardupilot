@@ -122,6 +122,10 @@
  # define FLIGHT_MODE_6                  MANUAL
 #endif
 
+// Anna's manual tilt control attempt
+#ifndef TILT_CHANNEL_DEFAULT
+ # define TILT_CHANNEL_DEFAULT      5     // default to channel 5 - why not?
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // AUTO_TRIM

@@ -353,6 +353,7 @@ private:
         AP_Int8  max_angle_deg;
         AP_Int8  tilt_type;
         AP_Float tilt_yaw_angle;
+        uint32_t last_transition_time; // Anna
         float current_tilt;
         float current_throttle;
         bool motors_active:1;
@@ -397,6 +398,7 @@ private:
     void tiltrotor_continuous_update(void);
     void tiltrotor_binary_update(void);
     void tiltrotor_vectored_yaw(void);
+    void set_tilt_position(void); // Anna
     void tilt_compensate_up(float *thrust, uint8_t num_motors);
     void tilt_compensate_down(float *thrust, uint8_t num_motors);
     void tilt_compensate(float *thrust, uint8_t num_motors);

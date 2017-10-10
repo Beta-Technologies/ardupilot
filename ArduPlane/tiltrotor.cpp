@@ -44,6 +44,7 @@ void QuadPlane::tiltrotor_slew(float newtilt)
 
     // translate to 0..1000 range and output
     SRV_Channels::set_output_scaled(SRV_Channel::k_motor_tilt, 1000 * tilt.current_tilt);
+    // Anna - This is what sets the PWM for the tilt channel -  see libraries/SRV_channel/SRV_Channel_aux.cpp
 
     // setup tilt compensation
     motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&QuadPlane::tilt_compensate, void, float *, uint8_t));
@@ -56,6 +57,7 @@ void QuadPlane::tiltrotor_continuous_update(void)
 {
     // default to inactive
     tilt.motors_active = false;
+    // Anna - probably comment this out
 
     // the maximum rate of throttle change
     float max_change;
@@ -108,6 +110,16 @@ void QuadPlane::tiltrotor_continuous_update(void)
 
       3) if we are in TRANSITION_TIMER mode then we are transitioning
          to forward flight and should put the rotors all the way forward
+
+         Anna - this is nice! We can just replace this -- possibly conditionally --
+         with some function that reads a momentary switch and computes the tilt
+         value, eg:
+
+         if (frame_type == QUAD_H && tilt.tilt_mask == 15) {
+			 float settilt = constrain_float(get_reqd_tilt_posn());
+			 tiltrotor_slew(settilt * tilt.max_angle_deg / 90.0f);
+         }
+
     */
     if (plane.control_mode == QSTABILIZE ||
         plane.control_mode == QHOVER) {
@@ -117,14 +129,38 @@ void QuadPlane::tiltrotor_continuous_update(void)
 
     if (assisted_flight &&
         transition_state >= TRANSITION_TIMER) {
+
         // we are transitioning to fixed wing - tilt the motors all
         // the way forward
+
+    		/* so do this if we are in transition_angle_wait or transition_done
+        enum {
+            TRANSITION_AIRSPEED_WAIT,
+            TRANSITION_TIMER,
+            TRANSITION_ANGLE_WAIT,
+            TRANSITION_DONE
+        } transition_state;
+    		*/
+
         tiltrotor_slew(1);
-    } else {
+
+    } else { // if we are in transition_airspeed_wait or transition_timer modes...
+
         // until we have completed the transition we limit the tilt to
         // Q_TILT_MAX. Anything above 50% throttle gets
         // Q_TILT_MAX. Below 50% throttle we decrease linearly. This
         // relies heavily on Q_VFWD_GAIN being set appropriately.
+
+    		/* From the docs:
+    		 *
+    		 * The Q_TILT_MAX parameter controls the tilt angle during transitions
+    		 * for continuous tilt vehicles. It is the angle in degrees that the rotors
+    		 * will move to while waiting for the transition airspeed to be reached.
+    		 * The right value for Q_TILT_MAX depends on how much tilt you need to achieve
+    		 * sufficient airspeed for the wings to provide most of the lift. For most tilt-rotors
+    		 * the default of 45 degrees is good.
+    		 */
+
         float settilt = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle) / 50.0f, 0, 1);
         tiltrotor_slew(settilt * tilt.max_angle_deg / 90.0f);
     }
@@ -176,6 +212,9 @@ void QuadPlane::tiltrotor_binary_update(void)
 
 /*
   update motor tilt
+
+  Anna - might want to put  a 4th possibility in here so that we don't
+  have to mangle tiltrotor_continuous_update too badly
  */
 void QuadPlane::tiltrotor_update(void)
 {
@@ -197,10 +236,10 @@ void QuadPlane::tiltrotor_update(void)
 
 
 /*
-  compensate for tilt in a set of motor outputs
+  compensate for tilt in a set of motor outputs (during transition to forward flight)
 
   Compensation is of two forms. The first is to apply _tilt_factor,
-  which is a compensation for the reduces vertical thrust when
+  which is a compensation for the reduced vertical thrust when
   tilted. This is supplied by set_motor_tilt_factor().
 
   The second compensation is to use equal thrust on all tilted motors
@@ -277,7 +316,7 @@ void QuadPlane::tilt_compensate_down(float *thrust, uint8_t num_motors)
 
 
 /*
-  tilt compensation when transitioning to VTOL flight
+  tilt compensation when transitioning to vertical flight
  */
 void QuadPlane::tilt_compensate_up(float *thrust, uint8_t num_motors)
 {
@@ -326,9 +365,10 @@ void QuadPlane::tilt_compensate(float *thrust, uint8_t num_motors)
         return;
     }
     if (in_vtol_mode()) {
-        // we are transitioning to VTOL flight
+        // we are transitioning to vertical flight
         tilt_compensate_up(thrust, num_motors);
     } else {
+    		// we are transitioning to forward flight
         tilt_compensate_down(thrust, num_motors);
     }
 }
@@ -369,4 +409,46 @@ void QuadPlane::tiltrotor_vectored_yaw(void)
         SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft,  1000 * (base_output + yaw_out * yaw_range));
         SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 1000 * (base_output - yaw_out * yaw_range));
     }
+}
+
+/* Anna - function to compute requested tilt position
+ *  based on three position momentary switch input. This may
+ *  substitute for the tiltrotor_slew() function implemented on
+ *  line 40 above. */
+void QuadPlane::set_tilt_position(void)
+{
+
+	float degs_per_msec = 20.0f / 1000.0f; // hardcode this? Make a param? I have no idea
+	float delta_angle = 0.0f;
+
+	if (tilt.current_tilt <= 0.0f || tilt.current_tilt >= 1.0f) {
+
+		// we are starting a new transition - move a little bit to satisfy condition next loop
+		delta_angle = 0.01f;
+
+	} else {
+
+		// We have begun to transition - move at desired rate
+		// Not sure using millis() is a great idea here...
+		delta_angle = (float)(millis() - tilt.last_transition_time) * (degs_per_msec / 90.0f);
+
+		if (hal.rcin->read(plane.g.tilt_channel-1) > 1749)
+			// I've copied the "-1" from code requesting the flight mode channel
+			// eg line 103, control_modes.cpp--we might not need it for this
+		{
+			// we are requesting a forward tilt, increment tilt position
+			tilt.current_tilt += delta_angle;
+		}
+		else if (hal.rcin->read(plane.g.tilt_channel-1) < 1230)
+		{
+			// we are requesting a backward tilt, decrement tilt position
+			tilt.current_tilt -= delta_angle;
+		}
+	}
+
+	// constrain tilt
+	tilt.current_tilt = constrain_float(tilt.current_tilt,0.0f,1.0f);
+
+	// update timer
+	tilt.last_transition_time = millis();
 }

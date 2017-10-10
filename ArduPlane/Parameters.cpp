@@ -831,6 +831,12 @@ const AP_Param::Info Plane::var_info[] = {
     // @User: Advanced
     GSCALAR(flap_2_speed,           "FLAP_2_SPEED",   FLAP_2_SPEED),
 
+    // @Param: TILT_CH
+    // @DisplayName: Tilt channel
+    // @Description: RC Channel to use for tilt mechanism control
+    // @User: Advanced
+    GSCALAR(tilt_channel,    "TILT_CH",     TILT_CHANNEL_DEFAULT),
+
 #if HAVE_PX4_MIXER
     // @Param: OVERRIDE_CHAN
     // @DisplayName: PX4IO override channel
