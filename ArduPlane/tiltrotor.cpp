@@ -396,7 +396,7 @@ void QuadPlane::tilt_compensate(float *thrust, uint8_t num_motors)
         // the motors are not tilted, no compensation needed
         return;
     }
-    if (in_vtol_mode()) {
+    if (in_vtol_mode()) { // Returns true if in QSTABILIZE, QHOVER, etc
         // we are transitioning to vertical flight
         tilt_compensate_up(thrust, num_motors);
     } else {
@@ -449,24 +449,24 @@ void QuadPlane::tiltrotor_vectored_yaw(void)
  *  line 40 above. */
 void QuadPlane::set_tilt_position(void)
 {
-
-	//float degs_per_msec = 20.0f / 1000.0f; // hardcode this? Make a param? I have no idea
-	//float delta_angle = 0.0f;
-
-	// Not sure using millis() is a great idea here...
-	//delta_angle = (float)(millis() - tilt.last_transition_time) * (degs_per_msec / 90.0f);
-
 	float delta_angle = 0.001f; // hardcode for debugging
 
 	if (hal.rcin->read(plane.g.tilt_channel-1) > 1749)
 	{
 		// we are requesting a forward tilt, increment tilt position
-		tilt.current_tilt += delta_angle;
+		//tilt.current_tilt += delta_angle;
+
+		tilt.current_tilt += (tilt.max_rate_down_dps / 90.0f) * plane.G_Dt;
+		// This creates some strange delays between when the command
+		// is sent to when the servos respond. Might be safer to keep the
+		// hardcoded increment that runs once per loop.
 	}
 	else if (hal.rcin->read(plane.g.tilt_channel-1) < 1230)
 	{
 		// we are requesting a backward tilt, decrement tilt position
-		tilt.current_tilt -= delta_angle;
+		//tilt.current_tilt -= delta_angle;
+
+		tilt.current_tilt -= (tilt.max_rate_up_dps / 90.0f) * plane.G_Dt;
 	} else {
 		// Hold current position
 	}
@@ -482,7 +482,4 @@ void QuadPlane::set_tilt_position(void)
     // what is going on here? function QuadPlane::tilt_compensate(float *thrust, uint8_t num_motors)
     // decides whether to compensate up or down based on flight mode. But what the heck is a FUNCTOR?
     // Where is the thrust value coming from?
-
-	// update timer
-	//tilt.last_transition_time = millis();
 }
