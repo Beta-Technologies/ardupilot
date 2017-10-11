@@ -57,8 +57,8 @@ void QuadPlane::tiltrotor_continuous_update(void)
 {
 
     // Anna - here is code specific to our airframe(s) that will use our
-    // set_tilt_position function during manually requested transition, rather than
-    // relying on flight mode or throttle state.
+    // set_tilt_position function (line 450) during manually requested transition,
+	// rather than relying on flight mode or throttle state.
     //AP_Int8 frame_class = 1 (quad) or 4 (octaquad)
     //AP_Int8 frame_type = 3 (H frame)
     // tilt_mask = 15 (all 4) or 255 (all 8)
@@ -67,31 +67,31 @@ void QuadPlane::tiltrotor_continuous_update(void)
     		// Set tilt position based on transition switch command (default is rc channel 5)
     		set_tilt_position();
 
+        if (!hal.util->get_soft_armed()) {
+        		// Set throttle to zero if not armed
+            tilt.current_throttle = 0;
+        } else {
+        		// otherwise capture throttle value so we can use it to set fwd flight motor speed
+        		// original function has some slew limiting on throttle in vertical flight modes--why?
+            tilt.current_throttle = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle)*0.01, 0, 1);
+        }
+
     		// Set flight mode based on tilt angle - use Q_TILT_MAX to cutoff differential thrust control?
     		if (tilt.current_tilt >= tilt.max_angle_deg/90.0f) {
     			// motors closer to horizontal: flight mode == FWBA
     			plane.set_mode(FLY_BY_WIRE_A, MODE_REASON_UNKNOWN);
-    		} else {
-    			// motors closer to vertical: flight mode == QSTABILIZE
-    			plane.set_mode(QSTABILIZE, MODE_REASON_UNKNOWN);
-    		}
 
-        if (!hal.util->get_soft_armed()) {
-            tilt.current_throttle = 0;
-        } else {
-    			// original function has some slew limiting on throttle in vertical flight modes--why?
-        		tilt.current_throttle = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle)*0.01, 0, 1);
-        }
-
-        	if (tilt.current_tilt >= 1) { //do this at smaller angle? What is controlling throttle during transition?
-
-            // the motors are all the way forward, start using them for fwd thrust
+            // the motors are mostly forward, start using them for fwd thrust
             uint8_t mask = is_zero(tilt.current_throttle)?0:(uint8_t)tilt.tilt_mask.get();
             motors->output_motor_mask(tilt.current_throttle, mask);
 
             // prevent motor shutdown
             tilt.motors_active = true;
-        }
+
+    		} else {
+    			// motors closer to vertical: flight mode == QSTABILIZE
+    			plane.set_mode(QSTABILIZE, MODE_REASON_UNKNOWN);
+    		}
 
     		return;
     }
@@ -450,13 +450,13 @@ void QuadPlane::tiltrotor_vectored_yaw(void)
 void QuadPlane::set_tilt_position(void)
 {
 
-	float degs_per_msec = 20.0f / 1000.0f; // hardcode this? Make a param? I have no idea
-	float delta_angle = 0.0f;
+	//float degs_per_msec = 20.0f / 1000.0f; // hardcode this? Make a param? I have no idea
+	//float delta_angle = 0.0f;
 
 	// Not sure using millis() is a great idea here...
 	//delta_angle = (float)(millis() - tilt.last_transition_time) * (degs_per_msec / 90.0f);
 
-	delta_angle = 0.001f; // hardcode for debugging
+	float delta_angle = 0.001f; // hardcode for debugging
 
 	if (hal.rcin->read(plane.g.tilt_channel-1) > 1749)
 	{
@@ -479,6 +479,9 @@ void QuadPlane::set_tilt_position(void)
 
     // setup tilt compensation
     motors->set_thrust_compensation_callback(FUNCTOR_BIND_MEMBER(&QuadPlane::tilt_compensate, void, float *, uint8_t));
+    // what is going on here? function QuadPlane::tilt_compensate(float *thrust, uint8_t num_motors)
+    // decides whether to compensate up or down based on flight mode. But what the heck is a FUNCTOR?
+    // Where is the thrust value coming from?
 
 	// update timer
 	//tilt.last_transition_time = millis();
