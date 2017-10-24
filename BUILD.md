@@ -64,7 +64,7 @@ list some basic and more used commands as example.
     Cleaning the build is very often not necessary and discouraged. We do
     incremental builds reducing the build time by orders of magnitude.
 
-
+ 
 * **Upload or install**
 
     Build commands have a `--upload` option in order to upload the binary built
@@ -315,3 +315,46 @@ There's also a make wrapper called `Makefile.waf`. You can use
 
 You can use `waf --help` to see information about commands and options built-in
 to waf as well as some quick help on those added by ardupilot.
+
+### Windows 10 Linux Subsystem Setup ###
+
+The build environment for the Linux Subsystem for windows needs a few development packages.
+
+```bash
+$ sudo apt-get update
+$ sudo apt-get upgrade
+
+# either configure the defalut python to be python3.5 or install python2.7
+$ sudo apt-get install python
+
+$ sudo apt-get install build-essential
+$ sudo apt-get install cmake
+$ sudo apt-get install python-pip
+$ sudo apt-get install genromfs
+$ sudo apt-get install unzip zip
+$ sudo apt-get install python-empy
+
+$ pip install future lxml catkin_pkg 
+
+# arm cross-compiling 
+$ sudo apt-get install gcc-arm-none-eabi
+
+$ cd ardupilot/
+
+# ensure we have submodules including libuavcan
+$ git submodule update --init --recursive
+
+# at which point you can configure waf 
+$ chmod u+x waf
+$ ./waf configure
+$ ./waf list_boards
+$ ./waf configure --board px4-v3
+
+$ ./waf clean
+$ ./waf plane
+```
+
+which creates
+    ardupilot/build/px4-v3/modules/PX4Firmware/src/firmware/nuttx/nuttx-px4fmu-v3-apm.px4
+which can be uploaded using mission planner's upload custom firmware button on the Install Firmware page.
+
