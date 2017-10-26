@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <utility>
 
-const AP_HAL::HAL &hal = AP_HAL::get_HAL();
+extern const AP_HAL::HAL &hal;
 
 AP_Local_I2c_Input::AP_Local_I2c_Input(uint8_t addr):
     i2c_addr(addr),
@@ -19,12 +19,10 @@ AP_Local_I2c_Input::AP_Local_I2c_Input(uint8_t addr):
     _counter(0),
     _raw_encoder(0)
 {
-    i2c_addr = addr;
     _offset = 1000.0f;
     // 1 revolution is 65535 (16 bits per revolution)
-    // trying: 60 degree deflection is 1000 us equivalent
-    _ratio = 1000.0f / (65535.0f / (360.0f / 60.0f));
-    sem = hal.util->new_semaphore();
+    _ratio = 1000.0f / 65535.0f;
+    sem = NULL;
 }
 
 AP_Local_I2c_Input::~AP_Local_I2c_Input()
@@ -35,12 +33,17 @@ AP_Local_I2c_Input::~AP_Local_I2c_Input()
 // modeled on AP_Airspeed_MS4525.cpp
 bool AP_Local_I2c_Input::init(void) {
 
+    if (sem == NULL) 
+    {
+        sem = hal.util->new_semaphore();
+    }
+
     const struct {
         uint8_t bus;
         uint8_t addr;
     } addresses[] = {
-        { 1, i2c_addr },
         { 0, i2c_addr },
+        { 1, i2c_addr },
         { 2, i2c_addr },
     };
     bool found = false;
@@ -55,9 +58,9 @@ bool AP_Local_I2c_Input::init(void) {
         }
 
         // lots of retries during probe
-        _dev->set_retries(10);
+        _dev->set_retries(25);
     
-        read();
+        read_position();
 
         _dev->get_semaphore()->give();
 
@@ -81,92 +84,89 @@ bool AP_Local_I2c_Input::init(void) {
     return true;
 }
 
-void AP_Local_I2c_Input::read()
+/** 
+ * The output doesn't seem to correspond to the datasheet we have for the Aksim MBA sensor
+ * What we do see is a continuous stream (we don't need to send a '1' read command).
+ * Bytes 0, 1: First two bytes are position, big-endian
+ * Byte 2 is status
+ *   0x06: head is too close to ring
+ *   0x00: good spacing
+ *   0x05: head is too far from ring
+ *   0x08: head is much too far (position will be FF FF)
+ * Byte 3: is detailed status, can't figure out the pattern yet
+ * Byte 4: changes wildly with any movement
+ */
+void AP_Local_I2c_Input::read_position()
 {
-    _measure();
-    hal.scheduler->delay(10);
-    _collect();
-}
-
-// start a measurement
-void AP_Local_I2c_Input::_measure()
-{
-    // if less than 250us have elapsed since the end of the previous response
-    // we should wait. (from data sheet)
-    _measurement_started_ms = 0;
-    uint8_t cmd = '1'; // 0x31 for single position data request
-    if (_dev->transfer(&cmd, 1, nullptr, 0)) {
-        _measurement_started_ms = AP_HAL::millis();
-    }
-}
-
-// read the values from the sensor
-void AP_Local_I2c_Input::_collect()
-{
-    const struct {
-        uint8_t header;
-        // big-endian, left-aligned
-        uint8_t absolute_position[3];
-        uint16_t encoder_status;
-        // should be 0xEF
-        uint8_t footer;
-    } data = {
-        0, {0,0,0}, 0, 0
-    };
+    _error = "";
+    uint8_t data[5];
 
     _measurement_started_ms = 0;
 
-    if (!_dev->transfer(nullptr, 0, (uint8_t *)&data, sizeof(data))) {
+    if (!_dev->transfer(nullptr, 0, (uint8_t *)&data, 5)) {
         return;
     }
+    // hal.console->printf("Bytes: %02X %02X -  %02X %02X - %02X", 
+    //     data[0], data[1], data[2], data[3], data[4]);
 
-    if (data.footer != 0xEF) {
-        // error, we didn't get the expected footer
-        return;
-    }
+    uint8_t encoder_status = data[2];
+    _healthy = encoder_status == 0x00;
 
-    if (data.encoder_status & (1<<9)) {
-        // bit 9 indicates any error. position is not valid
-        // detailed status in bits 0 through 7
-        if (data.encoder_status & 1) {
-            // position data changed too fast
+    if (!_healthy) {
+        if (encoder_status == 0x06) {
+            _error = "Read head is too close to ring.";
+        } else if (encoder_status == 0x05) {
+            _error = "Read head is too far from ring.";
+        } else if (encoder_status == 0x08) {
+            _error = "Read head is MUCH too far from ring. Position invalid";
         }
-        else if (data.encoder_status & (1<<1)) {
-            // magnetic pattern error. Metal particles or stray magnetic field present.
-        }
-        else if (data.encoder_status & (1<<2)) {
-            // system error in the circuitry or inconsistent calibartion data
-        }
-        else if (data.encoder_status & (1<<3)) {
-            // Power supply error - voltage out of range
-        }
-        else if (data.encoder_status & (1<<4)) {
-            // Readhead temperature is out of range
-        }
-        else if (data.encoder_status & (1<<5)) {
-            // signal lost. readhead is out of alignment
-        }
-        else if (data.encoder_status & (1<<6)) {
-            // signal amplitude low. Distance between head and ring is too large
-        }
-        else if (data.encoder_status & (1<<6)) {
-            // signal amplitude high. Distance between head and ring is too small
-        }
-        return;
     }
 
     int32_t position = 0;
     // bit twiddling is unchecked
-    position |= data.absolute_position[0] << 16;
-    position |= data.absolute_position[1] << 8;
-    position |= data.absolute_position[2];
+    position |= ((uint32_t)data[0]) << 8;
+    position |= data[1];
 
     if (sem->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
         _raw_encoder = position;
         _counter++;
+        _last_update_ms = AP_HAL::millis();
         sem->give();
     }
-    
-    _last_update_ms = AP_HAL::millis();
 }
+
+/*
+The data sheet would have us expect the following error bits:
+
+    if (encoder_status & (1<<9)) {
+        // bit 9 indicates any error. position is not valid
+        // detailed status in bits 0 through 7
+        if (encoder_status & 1) {
+            _error = "position data changed too fast";
+        }
+        else if (encoder_status & (1<<1)) {
+            _error = "magnetic pattern error. Metal particles or stray magnetic field present.";
+        }
+        else if (encoder_status & (1<<2)) {
+            _error = "system error in the circuitry or inconsistent calibartion data";
+        }
+        else if (encoder_status & (1<<3)) {
+            _error = "Power supply error - voltage out of range";
+        }
+        else if (encoder_status & (1<<4)) {
+            _error = "Readhead temperature is out of range";
+        }
+        else if (encoder_status & (1<<5)) {
+            _error = "signal lost. readhead is out of alignment";
+        }
+        else if (encoder_status & (1<<6)) {
+            _error = "signal amplitude low. Distance between head and ring is too large";
+        }
+        else if (encoder_status & (1<<7)) {
+            _error = "signal amplitude high. Distance between head and ring is too small";
+        }
+        return;
+    }
+
+*/
 

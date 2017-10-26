@@ -18,7 +18,9 @@ public:
     bool init(void);
 
     // read the i2c source and update _raw_encoder
-    void read(void);
+    void read_position(void);
+
+    const char* last_error(void) { return _error; }
 
     void set_i2c_addr(uint8_t addr) {
         i2c_addr = addr;
@@ -35,7 +37,7 @@ public:
 
     // return the current encoder value in 1000 - 2000 PWM range
     uint32_t get_encoder(void) const {
-        return (int)(_encoder * _ratio + _offset + 0.5f);
+        return (int)(_raw_encoder * _ratio + _offset + 0.5f);
     }
 
     // return the current offset
@@ -57,29 +59,23 @@ public:
     // return time in ms of last update
     uint32_t last_update_ms(void) const { return _last_update_ms; }
 
-    // log data to MAVLink
-    //void log_mavlink_send(mavlink_channel_t chan, const Vector3f &vground);
-
-    static const struct AP_Param::GroupInfo var_info[];
+    //static const struct AP_Param::GroupInfo var_info[];
 
 private:
-    void _measure();
-    void _collect();
-
+    const char *    _error;
     uint8_t         i2c_addr;
+    int32_t         _raw_encoder;
 
-    int32_t           _raw_encoder;
     // offset and ratio to get it in the range we want
     AP_Float        _offset;
     AP_Float        _ratio;
-    // scaled to a range 1000 to 2000 to mimic RC input PWM in ms
-    int16_t           _encoder;
+
     // state 
     bool		    _healthy:1;
-    uint32_t        _last_update_ms;
     uint8_t         _counter;
-
     uint32_t        _measurement_started_ms;
+    uint32_t        _last_update_ms;
+
     AP_HAL::Semaphore *sem;    
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _dev;
 };
