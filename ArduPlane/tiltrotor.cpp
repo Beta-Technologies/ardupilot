@@ -449,7 +449,7 @@ void QuadPlane::tiltrotor_vectored_yaw(void)
  *  line 40 above. */
 void QuadPlane::set_tilt_position(void)
 {
-	float delta_angle = 0.001f; // hardcode for debugging
+	//float delta_angle = 0.001f; // hardcode for debugging
 
 	if (hal.rcin->read(plane.g.tilt_channel-1) > 1749)
 	{
