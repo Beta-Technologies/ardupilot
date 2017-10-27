@@ -98,7 +98,6 @@ bool AP_Local_I2c_Input::init(void) {
  */
 void AP_Local_I2c_Input::read_position()
 {
-    _error = "";
     uint8_t data[5];
 
     _measurement_started_ms = 0;
@@ -106,21 +105,61 @@ void AP_Local_I2c_Input::read_position()
     if (!_dev->transfer(nullptr, 0, (uint8_t *)&data, 5)) {
         return;
     }
-    // hal.console->printf("Bytes: %02X %02X -  %02X %02X - %02X", 
-    //     data[0], data[1], data[2], data[3], data[4]);
 
-    uint8_t encoder_status = data[2];
-    _healthy = encoder_status == 0x00;
+    bool error = (bool)(data[2] & (1 << 3));
+    bool warning = (bool)(data[2] & (1 << 2));
 
-    if (!_healthy) {
-        if (encoder_status == 0x06) {
-            _error = "Read head is too close to ring.";
-        } else if (encoder_status == 0x05) {
-            _error = "Read head is too far from ring.";
-        } else if (encoder_status == 0x08) {
-            _error = "Read head is MUCH too far from ring. Position invalid";
+    bool readHeadNear = (bool)(data[2] & (1 << 1));
+    bool readHeadFar = (bool)(data[2] & 1);
+    bool misaligned = (bool)(data[3] & (1 << 7));
+    bool temperature = (bool)(data[3] & (1 << 6));
+    bool powerError = (bool)(data[3] & (1 << 5));
+    bool systemError = (bool)(data[3] & (1 << 4));
+    bool patternError = (bool)(data[3] & (1 << 3));
+    bool acceleration = (bool)(data[3] & (1 << 2));
+    //uint8_t crc = data[4];
+
+    _error = "";
+
+    if (error || warning) {
+        const char* prefix = "";
+        const char* message = "";
+
+        if (error) {
+            prefix = "ERROR-- position invalid:";
+        } else if (warning) {
+            prefix = "Warning:";
         }
+
+        if (readHeadNear) {
+            message = " Read head is too close to ring.";
+        } else if (readHeadFar) {
+            message = "Read head is too far from ring.";
+        } else if (acceleration) {
+            message = "Position data changed too fast";
+        } else if (patternError) {
+            message = "magnetic pattern error. Metal particles or stray magnetic field present.";
+        } else if (systemError) {
+            message = "system error in the circuitry or inconsistent calibartion data";
+        } else if (powerError) {
+            message = "Power supply error - voltage out of range";
+        } else if (temperature) {
+            message = "Read head temperature is out of range";
+        } else if (misaligned) {
+            message = "Signal lost. readhead is out of alignment";
+        }
+
+        snprintf(error_message, 200, "%s %s", prefix, message);
+        _error = error_message;
     }
+
+    // if (error) {
+    //     // should we 'failsafe' to mid-range? 
+    //     // we probably need a parameter for each sensor that gives us 
+    //     // the value to use when there's an error.
+    //     raw_encoder = 32767;
+    //     return;
+    // }
 
     int32_t position = 0;
     // bit twiddling is unchecked
@@ -135,38 +174,4 @@ void AP_Local_I2c_Input::read_position()
     }
 }
 
-/*
-The data sheet would have us expect the following error bits:
-
-    if (encoder_status & (1<<9)) {
-        // bit 9 indicates any error. position is not valid
-        // detailed status in bits 0 through 7
-        if (encoder_status & 1) {
-            _error = "position data changed too fast";
-        }
-        else if (encoder_status & (1<<1)) {
-            _error = "magnetic pattern error. Metal particles or stray magnetic field present.";
-        }
-        else if (encoder_status & (1<<2)) {
-            _error = "system error in the circuitry or inconsistent calibartion data";
-        }
-        else if (encoder_status & (1<<3)) {
-            _error = "Power supply error - voltage out of range";
-        }
-        else if (encoder_status & (1<<4)) {
-            _error = "Readhead temperature is out of range";
-        }
-        else if (encoder_status & (1<<5)) {
-            _error = "signal lost. readhead is out of alignment";
-        }
-        else if (encoder_status & (1<<6)) {
-            _error = "signal amplitude low. Distance between head and ring is too large";
-        }
-        else if (encoder_status & (1<<7)) {
-            _error = "signal amplitude high. Distance between head and ring is too small";
-        }
-        return;
-    }
-
-*/
 

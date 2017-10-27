@@ -63,6 +63,8 @@ public:
 
 private:
     const char *    _error;
+    char error_message[200];
+
     uint8_t         i2c_addr;
     int32_t         _raw_encoder;
 
