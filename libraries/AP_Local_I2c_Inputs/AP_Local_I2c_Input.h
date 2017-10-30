@@ -20,12 +20,23 @@ public:
     // read the i2c source and update _raw_encoder
     void read_position(void);
 
+    // change to the new address, and updates this device to use it
+    void change_address(uint8_t new_addresss);
+
     const char* last_error(void) { return _error; }
 
     void set_i2c_addr(uint8_t addr) {
         i2c_addr = addr;
     }
 
+    void set_offset(uint16_t offset) {
+        _offset = offset;
+    }
+
+    void set_ratio(float ratio) {
+        _ratio = ratio;
+    }
+    
     uint8_t get_i2c_addr() {
         return i2c_addr;
     }
@@ -37,7 +48,7 @@ public:
 
     // return the current encoder value in 1000 - 2000 PWM range
     uint32_t get_encoder(void) const {
-        return (int)(_raw_encoder * _ratio + _offset + 0.5f);
+        return MIN(MAX((int)(_raw_encoder * _ratio + _offset + 0.5f), 1000), 2000);
     }
 
     // return the current offset
@@ -80,4 +91,7 @@ private:
 
     AP_HAL::Semaphore *sem;    
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _dev;
+
+    uint8_t calculateCrc(uint8_t *buffer, uint8_t size);
+    static uint8_t _CrcTable [256];
 };
