@@ -15,6 +15,9 @@ AP_Local_Inputs::AP_Local_Inputs(void):
  rudder_encoder(NULL),
  tilt_encoder(NULL)
 {
+    // set defaults from the parameter table
+    AP_Param::setup_object_defaults(this, var_info);
+
     _ail_address = 0x18;
 }
 
@@ -22,13 +25,14 @@ void AP_Local_Inputs::start(void)
 {
     _ele_address = 0x20;
 
+    return; // jimc 
     AP_Local_I2c_Input *encoder;
 
     // aileron
-    encoder = new AP_Local_I2c_Input(_thr_address);
+    encoder = new AP_Local_I2c_Input(_ail_address);
     if (encoder->init()) {
-        encoder->set_offset(_thr_offset);
-        encoder->set_ratio(_thr_ratio);
+        encoder->set_offset(_ail_offset);
+        encoder->set_ratio(_ail_ratio);
         aileron_encoder = encoder;
     }
 
