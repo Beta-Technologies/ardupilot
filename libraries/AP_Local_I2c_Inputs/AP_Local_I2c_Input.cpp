@@ -66,13 +66,13 @@ bool AP_Local_I2c_Input::init(void) {
 
         found = (_last_update_ms != 0);
         if (found) {
-            printf("I2C_MBAD01: Found encoder on bus %u address 0x%02x\n", addresses[i].bus, addresses[i].addr);
+//            printf("I2C_MBAD01: Found encoder on bus %u address 0x%02x\n", addresses[i].bus, addresses[i].addr);
             break;
         }
     }
 
     if (!found) {
-        printf("I2C_MBAD01: no encoder found\n");
+//        printf("I2C_MBAD01: no encoder found\n");
         return false;
     }
 

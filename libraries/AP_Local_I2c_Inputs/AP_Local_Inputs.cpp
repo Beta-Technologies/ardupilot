@@ -7,7 +7,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AP_Local_Inputs.h"
 
-const AP_HAL::HAL &hal = AP_HAL::get_HAL();
 
 AP_Local_Inputs::AP_Local_Inputs(void):
  aileron_encoder(NULL),
@@ -15,12 +14,14 @@ AP_Local_Inputs::AP_Local_Inputs(void):
  throttle_encoder(NULL),
  rudder_encoder(NULL),
  tilt_encoder(NULL)
- {
-
+{
+    _ail_address = 0x18;
 }
 
 void AP_Local_Inputs::start(void)
 {
+    _ele_address = 0x20;
+
     AP_Local_I2c_Input *encoder;
 
     // aileron
@@ -66,6 +67,7 @@ void AP_Local_Inputs::start(void)
 
 void AP_Local_Inputs::update(void)
 {
+    return;
     int16_t channels[11];
 
     // mid-range defaults
@@ -104,7 +106,8 @@ void AP_Local_Inputs::update(void)
     for (uint8_t i = 5; i < 11; i++) {
         channels[i] = 0xFFFF;
     }
-
+    
+    const AP_HAL::HAL &hal = AP_HAL::get_HAL();
     hal.rcin->set_overrides(channels, 10);
 }
 
@@ -116,7 +119,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("THR_I2C_ADDRESS",        0, AP_Local_Inputs, _thr_address, 1),
+    AP_GROUPINFO("THR_I2C_ADDRESS", 0, AP_Local_Inputs, _thr_address, 0x20),
 
     // @Param: THR_OFFSET
     // @DisplayName: aileron encoder offset
@@ -125,7 +128,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("THR_OFFSET",        0, AP_Local_Inputs, _thr_offset, 1),
+    AP_GROUPINFO("THR_OFFSET", 1, AP_Local_Inputs, _thr_offset, 1000),
 
     // @Param: THR_RATIO
     // @DisplayName: aileron encoder offset
@@ -134,7 +137,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("THR_RATIO",        0, AP_Local_Inputs, _thr_ratio, 1),
+    AP_GROUPINFO("THR_RATIO", 2, AP_Local_Inputs, _thr_ratio, 0.03),
 
 
     // @Param: ELE_I2C_ADDRESS
@@ -144,7 +147,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("ELE_I2C_ADDRESS",        0, AP_Local_Inputs, _ele_address, 1),
+    AP_GROUPINFO("ELE_I2C_ADDRESS", 3, AP_Local_Inputs, _ele_address, 0x21),
 
     // @Param: ELE_OFFSET
     // @DisplayName: elevator encoder offset
@@ -153,7 +156,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("ELE_OFFSET",        0, AP_Local_Inputs, _ele_offset, 1),
+    AP_GROUPINFO("ELE_OFFSET", 4, AP_Local_Inputs, _ele_offset, 1000),
 
     // @Param: ELE_RATIO
     // @DisplayName: elevator encoder ratio
@@ -162,7 +165,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("ELE_RATIO",        0, AP_Local_Inputs, _ele_ratio, 1),
+    AP_GROUPINFO("ELE_RATIO", 5, AP_Local_Inputs, _ele_ratio, 0.03),
 
 
     // @Param: THR_I2C_ADDRESS
@@ -172,7 +175,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("THR_I2C_ADDRESS",        0, AP_Local_Inputs, _thr_address, 1),
+    AP_GROUPINFO("THR_I2C_ADDRESS", 6, AP_Local_Inputs, _thr_address, 0x22),
 
     // @Param: THR_OFFSET
     // @DisplayName: throttle encoder offset
@@ -181,7 +184,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("THR_OFFSET",        0, AP_Local_Inputs, _thr_offset, 1),
+    AP_GROUPINFO("THR_OFFSET", 7, AP_Local_Inputs, _thr_offset, 1000),
 
     // @Param: THR_RATIO
     // @DisplayName: throttle encoder ratio
@@ -190,7 +193,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("THR_RATIO",        0, AP_Local_Inputs, _thr_ratio, 1),
+    AP_GROUPINFO("THR_RATIO", 8, AP_Local_Inputs, _thr_ratio, 0.03),
 
 
     // @Param: RUD_I2C_ADDRESS
@@ -200,7 +203,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("RUD_I2C_ADDRESS",        0, AP_Local_Inputs, _rud_address, 1),
+    AP_GROUPINFO("RUD_I2C_ADDRESS", 9, AP_Local_Inputs, _rud_address, 0x23),
 
     // @Param: RUD_OFFSET
     // @DisplayName: rudder encoder offset
@@ -209,7 +212,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("RUD_OFFSET",        0, AP_Local_Inputs, _rud_offset, 1),
+    AP_GROUPINFO("RUD_OFFSET", 10, AP_Local_Inputs, _rud_offset, 1000),
 
     // @Param: RUD_RATIO
     // @DisplayName: rudder encoder ratio
@@ -218,7 +221,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("RUD_RATIO",        0, AP_Local_Inputs, _rud_ratio, 1),
+    AP_GROUPINFO("RUD_RATIO", 11, AP_Local_Inputs, _rud_ratio, 0.03),
 
 
     // @Param: TILT_I2C_ADDRESS
@@ -228,7 +231,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("TILT_I2C_ADDRESS",        0, AP_Local_Inputs, _tilt_address, 1),
+    AP_GROUPINFO("TILT_I2C_ADDRESS", 12, AP_Local_Inputs, _tilt_address, 0x24),
 
     // @Param: TILT_OFFSET
     // @DisplayName: tilt encoder offset
@@ -237,7 +240,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("TILT_OFFSET",        0, AP_Local_Inputs, _tilt_offset, 1),
+    AP_GROUPINFO("TILT_OFFSET", 13, AP_Local_Inputs, _tilt_offset, 1000),
 
     // @Param: TILT_RATIO
     // @DisplayName: tilt encoder ratio
@@ -246,7 +249,7 @@ const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
     // @Increment: 1
     // @User: Advanced
     // @RebootRequired: True
-    AP_GROUPINFO("TILT_RATIO",        0, AP_Local_Inputs, _tilt_ratio, 1),
+    AP_GROUPINFO("TILT_RATIO", 14, AP_Local_Inputs, _tilt_ratio, 0.03),
 
     AP_GROUPEND
 };

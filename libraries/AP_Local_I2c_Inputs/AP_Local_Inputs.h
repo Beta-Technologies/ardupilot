@@ -4,6 +4,7 @@
 
 class AP_Local_Inputs {
 public:
+    AP_Local_Inputs();
 	static AP_Local_Inputs create() { return AP_Local_Inputs{}; }
 
     constexpr AP_Local_Inputs(AP_Local_Inputs &&other) = default;
@@ -18,7 +19,6 @@ public:
 	void update(void);
 
 private:
-    AP_Local_Inputs();
 
     AP_Local_I2c_Input *aileron_encoder;
     AP_Local_I2c_Input *elevator_encoder;

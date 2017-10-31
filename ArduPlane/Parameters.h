@@ -545,6 +545,8 @@ public:
     // home reset altitude threshold
     AP_Int8 home_reset_threshold;
 
+    // Beta Technologies local inputs
+    //jimcAP_Local_Inputs beta_local_inputs;
 };
 
 extern const AP_Param::Info var_info[];

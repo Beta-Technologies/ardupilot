@@ -1160,6 +1160,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Group: SOAR_
     // @Path: ../libraries/AP_Soaring/AP_Soaring.cpp
     AP_SUBGROUPINFO(soaring_controller, "SOAR_", 8, ParametersG2, SoaringController),
+
+    // @Group: BETA_
+    // @Path: ../libraries/AP_Local_I2c_Inputs/AP_Local_Inputs.cpp
+    //jimcAP_SUBGROUPINFO(beta_local_inputs, "BETA_", 15, ParametersG2, AP_Local_Inputs),
   
     // @Param: RUDD_DT_GAIN
     // @DisplayName: rudder differential thrust gain

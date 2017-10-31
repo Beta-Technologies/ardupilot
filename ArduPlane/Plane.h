@@ -77,6 +77,7 @@
 #include <AP_Mission/AP_Mission.h>     // Mission command library
 
 #include <AP_Soaring/AP_Soaring.h>
+#include <AP_Local_I2c_Inputs/AP_Local_Inputs.h>
 #include <AP_Notify/AP_Notify.h>      // Notify library
 #include <AP_BattMonitor/AP_BattMonitor.h> // Battery monitor library
 
