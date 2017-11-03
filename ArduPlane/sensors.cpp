@@ -164,6 +164,16 @@ void Plane::button_update(void)
 }
 
 /*
+ Beta technologies local i2c inputs
+ */
+
+void Plane::update_local_inputs(void)
+{
+    g2.beta_local_inputs.update();    
+}
+
+
+/*
   update AP_ICEngine
  */
 void Plane::ice_update(void)

@@ -77,7 +77,7 @@
 #include <AP_Mission/AP_Mission.h>     // Mission command library
 
 #include <AP_Soaring/AP_Soaring.h>
-#include <AP_Local_I2c_Inputs/AP_Local_Inputs.h>
+#include <AP_Local_Inputs/AP_Local_Inputs.h> // Beta Technologies Local i2c control
 #include <AP_Notify/AP_Notify.h>      // Notify library
 #include <AP_BattMonitor/AP_BattMonitor.h> // Battery monitor library
 
@@ -958,6 +958,7 @@ private:
     void read_receiver_rssi(void);
     void rpm_update(void);
     void button_update(void);
+    void update_local_inputs(void);
     void stats_update();
     void ice_update(void);
     void init_ardupilot();
@@ -1087,6 +1088,8 @@ private:
     // support for AP_Avoidance custom flight mode, AVOID_ADSB
     bool avoid_adsb_init(bool ignore_checks);
     void avoid_adsb_run();
+
+    void updale_local_inputs(void);
 
 public:
     void mavlink_delay_cb();

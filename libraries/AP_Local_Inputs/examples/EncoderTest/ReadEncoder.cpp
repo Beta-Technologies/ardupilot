@@ -8,7 +8,7 @@
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
-#include <AP_Local_I2c_Inputs/AP_Local_I2c_Input.h>
+#include <AP_Local_Inputs/AP_Local_I2c_Input.h>
 #include <AP_HAL/I2CDevice.h>
 #include <AP_Math/AP_Math.h>
 
@@ -33,7 +33,7 @@ void setup(void)
     // setup any board specific drivers
     BoardConfig.init();
 
-    hal.console->printf("AP_Local_I2c_Inputs startup...\n");
+    hal.console->printf("BETA AP_Local_Inputs startup...\n");
 
     hal.console->printf("Setup Complete.\n\n");    
 }

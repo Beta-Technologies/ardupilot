@@ -60,4 +60,4 @@ LIBRARIES += AP_Landing
 LIBRARIES += AP_Beacon
 LIBRARIES += PID
 LIBRARIES += AP_Soaring
-LIBRARIES += AP_Local_I2c_Inputs
+LIBRARIES += AP_Local_Inputs

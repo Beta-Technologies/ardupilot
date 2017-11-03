@@ -3,7 +3,7 @@
 //   Latency 200us to 400us
 //   16 bits per revolution
 
-#include <AP_Local_I2c_Inputs/AP_Local_I2c_Input.h>
+#include <AP_Local_Inputs/AP_Local_I2c_Input.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL.h>
 #include <AP_HAL/I2CDevice.h>

@@ -57,10 +57,10 @@ We'll use a similar menu to do i2c address changes.
 
 creating:
 ```
-   AP_Local_I2c_Inputs/examples/EncoderTest/ReadEncoder.cpp
-   AP_Local_I2c_Inputs/examples/EncoderTest/wscript
-   AP_Local_I2c_Inputs/AP_Local_I2c_Input.h
-   AP_Local_I2c_Inputs/AP_Local_I2c_Input.cpp
+   AP_Local_Inputs/examples/EncoderTest/ReadEncoder.cpp
+   AP_Local_Inputs/examples/EncoderTest/wscript
+   AP_Local_Inputs/AP_Local_I2c_Input.h
+   AP_Local_Inputs/AP_Local_I2c_Input.cpp
       Represent one i2c device with its own address, which defaluts to 0x18
 Also needed to add the library to 
    ardupilot\ArduPlane\wscript   
@@ -76,21 +76,6 @@ creates
    build/px4-v3/examples/EncoderTest.px4
 ```
 
-The hall effect sensor position output doesn't seem to match anything in the data sheet.
-What we did was set it to read bytes and display them in hex format. Fiddling with the sensor
-we see the following output.
 
-```
-  The output doesn't seem to correspond to the datasheet we have for the Aksim MBA sensor
-  What we do see is a continuous stream (we don't need to send a '1' read command).
-  Bytes 0, 1: First two bytes are position, big-endian
-  Byte 2 is status
-    0x06: head is too close to ring
-    0x00: good spacing
-    0x05: head is too far from ring
-    0x08: head is much too far (position will be FF FF)
-  Byte 3: is detailed status, can't figure out the pattern yet
-  Byte 4: changes wildly with any movement
-```
-
+The i2c interface described on page 22 of the datasheet gives us all of the position and error decoding specifications. We're using Datasheet_Aksim_MBA.pdf
 

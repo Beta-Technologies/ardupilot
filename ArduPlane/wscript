@@ -33,7 +33,7 @@ def build(bld):
             'AP_Beacon',
             'PID',
             'AP_Soaring',
-            'AP_Local_I2c_Inputs'
+            'AP_Local_Inputs'
         ],
     )
 

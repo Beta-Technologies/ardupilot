@@ -20,6 +20,10 @@ public:
 
 private:
 
+    int16_t scale_raw(uint16_t read, uint16_t low, uint16_t high);
+
+    bool started;
+
     AP_Local_I2c_Input *aileron_encoder;
     AP_Local_I2c_Input *elevator_encoder;
     AP_Local_I2c_Input *throttle_encoder;
@@ -28,22 +32,22 @@ private:
 
     // encoder parameters
     AP_Int8 _ail_address;
-    AP_Int16 _ail_offset;
-    AP_Float _ail_ratio;
+    AP_Int32 _ail_low;
+    AP_Int32 _ail_high;
 
     AP_Int8 _ele_address;
-    AP_Int16 _ele_offset;
-    AP_Float _ele_ratio;
+    AP_Int32 _ele_low;
+    AP_Int32 _ele_high;
 
     AP_Int8 _thr_address;
-    AP_Int16 _thr_offset;
-    AP_Float _thr_ratio;
+    AP_Int32 _thr_low;
+    AP_Int32 _thr_high;
 
     AP_Int8 _rud_address;
-    AP_Int16 _rud_offset;
-    AP_Float _rud_ratio;
+    AP_Int32 _rud_low;
+    AP_Int32 _rud_high;
 
     AP_Int8 _tilt_address;
-    AP_Int16 _tilt_offset;
-    AP_Float _tilt_ratio;
+    AP_Int32 _tilt_low;
+    AP_Int32 _tilt_high;
 };
