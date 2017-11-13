@@ -37,13 +37,21 @@ public:
         _ratio = ratio;
     }
     
+    void set_last_good_position(uint16_t position) {
+    		_last_good = position;
+    }
+
     uint8_t get_i2c_addr() {
         return i2c_addr;
     }
 
     // return the unfiltered encoder value in m/s
-    uint32_t get_raw_encoder(void) const {
+    uint16_t get_raw_encoder(void) const {
         return _raw_encoder;
+    }
+
+    uint16_t get_last_good_position() {
+    		return _last_good;
     }
 
     // return the current encoder value in 1000 - 2000 PWM range
@@ -77,7 +85,9 @@ private:
     char error_message[200];
 
     uint8_t         i2c_addr;
-    int32_t         _raw_encoder;
+    //int32_t         _raw_encoder;
+    uint16_t _raw_encoder;
+    uint16_t _last_good;
 
     // offset and ratio to get it in the range we want
     AP_Float        _offset;
