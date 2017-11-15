@@ -86,6 +86,7 @@ void AP_Local_Inputs::update(void)
 
     if (elevator_encoder != NULL) {
         elevator_encoder->read_position();
+
         uint16_t raw_encoder = elevator_encoder->get_raw_encoder();
         channels[1] = scale_raw(raw_encoder, _ele_low, _ele_high);
     }
@@ -116,7 +117,7 @@ void AP_Local_Inputs::update(void)
 
 int16_t AP_Local_Inputs::scale_raw(uint16_t read, uint16_t low, uint16_t high)
 {
-	int16_t max_pwm = 2000;
+	int16_t max_pwm = 2000; // I think this will always be the case, but I'm not sure...
 	int16_t min_pwm = 1000;
     int16_t scaled = (int16_t) ( (float)( (read - low) * (max_pwm - min_pwm) )/(float)(high - low) );
     return MIN(MAX(scaled+min_pwm,min_pwm),max_pwm);

@@ -157,9 +157,8 @@ void AP_Local_I2c_Input::read_position()
     if (error) {
     		position = get_last_good_position();
     } else {
-
-    position = ((uint16_t)data[0] << 8) | data[1];
-    set_last_good_position(position);
+    		position = ((uint16_t)data[0] << 8) | data[1];
+    		set_last_good_position(position);
     }
 
     if (sem->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
