@@ -140,7 +140,7 @@ void AP_Local_I2c_Input::read_position()
         } else if (patternError) {
             message = "magnetic pattern error. Metal particles or stray magnetic field present.";
         } else if (systemError) {
-            message = "system error in the circuitry or inconsistent calibartion data";
+            message = "system error in the circuitry or inconsistent calibration data";
         } else if (powerError) {
             message = "Power supply error - voltage out of range";
         } else if (temperature) {
@@ -153,18 +153,13 @@ void AP_Local_I2c_Input::read_position()
         _error = error_message;
     }
 
-    // if (error) {
-    //     // should we 'failsafe' to mid-range? 
-    //     // we probably need a parameter for each sensor that gives us 
-    //     // the value to use when there's an error.
-    //     raw_encoder = 32767;
-    //     return;
-    // }
-
-    int32_t position = 0;
-    // bit twiddling is unchecked
-    position |= ((uint32_t)data[0]) << 8;
-    position |= data[1];
+    uint16_t position = 0;
+    if (error) {
+    		position = get_last_good_position();
+    } else {
+    		position = ((uint16_t)data[0] << 8) | data[1];
+    		set_last_good_position(position);
+    }
 
     if (sem->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
         _raw_encoder = position;

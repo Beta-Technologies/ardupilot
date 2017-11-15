@@ -71,13 +71,11 @@ void AP_Local_Inputs::update(void)
     }
 
     int16_t channels[11];
-
-    // mid-range defaults
-    for (uint8_t i = 0; i < 5; i++) {
-        channels[i] = 1500;
+    // Populate array with zeros - any zero value overrides are ignored
+    // This allows us to use transmitter for some channels and encoders for others
+    for (uint8_t i = 0; i < 11; i++) {
+        channels[i] = 0x0000;
     }
-    // low throttle default
-    channels[2] = 950;
 
     if (aileron_encoder != NULL) {
         aileron_encoder->read_position();
@@ -88,6 +86,7 @@ void AP_Local_Inputs::update(void)
 
     if (elevator_encoder != NULL) {
         elevator_encoder->read_position();
+
         uint16_t raw_encoder = elevator_encoder->get_raw_encoder();
         channels[1] = scale_raw(raw_encoder, _ele_low, _ele_high);
     }
@@ -112,20 +111,17 @@ void AP_Local_Inputs::update(void)
         uint16_t raw_encoder = tilt_encoder->get_raw_encoder();
         channels[4] = scale_raw(raw_encoder, _tilt_low, _tilt_high);
     }
-
-    // sentinel / not used
-    for (uint8_t i = 5; i < 11; i++) {
-        channels[i] = 0xFFFF;
-    }
     
     hal.rcin->set_overrides(channels, 10);
 }
 
 int16_t AP_Local_Inputs::scale_raw(uint16_t read, uint16_t low, uint16_t high)
 {
-    float ratio = 1000.0f / ((float)high - (float)low);
-    int16_t scaled = (int16_t)(((float)read - low) * ratio);
-    return MIN(MAX(scaled + 1000, 1000), 2000);
+	int16_t max_pwm = 2000; // I think this will always be the case, but I'm not sure...
+	int16_t min_pwm = 1000;
+    int16_t scaled = (int16_t) ( (float)( (read - low) * (max_pwm - min_pwm) )/(float)(high - low) );
+    return MIN(MAX(scaled+min_pwm,min_pwm),max_pwm);
+
 }
 
 const AP_Param::GroupInfo AP_Local_Inputs::var_info[] = {
