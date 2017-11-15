@@ -450,13 +450,14 @@ void QuadPlane::tiltrotor_vectored_yaw(void)
 void QuadPlane::set_tilt_position(void)
 {
 	//float delta_angle = 0.001f; // hardcode for debugging
+	float delta_angle = plane.G_Dt;
 
 	if (hal.rcin->read(plane.g.tilt_channel-1) > 1749)
 	{
 		// we are requesting a forward tilt, increment tilt position
 		//tilt.current_tilt += delta_angle;
 
-		tilt.current_tilt += (tilt.max_rate_down_dps / 90.0f) * plane.G_Dt;
+		tilt.current_tilt += (tilt.max_rate_down_dps / 90.0f) * delta_angle;
 		// This creates some strange delays between when the command
 		// is sent to when the servos respond. Might be safer to keep the
 		// hardcoded increment that runs once per loop.
@@ -466,7 +467,7 @@ void QuadPlane::set_tilt_position(void)
 		// we are requesting a backward tilt, decrement tilt position
 		//tilt.current_tilt -= delta_angle;
 
-		tilt.current_tilt -= (tilt.max_rate_up_dps / 90.0f) * plane.G_Dt;
+		tilt.current_tilt -= (tilt.max_rate_up_dps / 90.0f) * delta_angle;
 	} else {
 		// Hold current position
 	}
